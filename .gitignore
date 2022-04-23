@@ -1,0 +1,6 @@
+blockchainenv/
+# Exclude all files with starting character ".":
+.*
+
+# Not exclude .gitignore
+!.gitignore
