@@ -4,9 +4,9 @@
 # @Github: https://github.com/Z-Xiaobi
 
 from flask import Flask, request
-from blockchain import Block, BlockChain, time, json
+from blockchain import Block, BlockChain, time, json, requests
 # import time
-import requests
+# import requests
 
 # Initialize Application
 app = Flask(__name__)
@@ -124,3 +124,30 @@ def create_chain_from_dump(chain_dump):
         else:  # the block is the initial block, no verification needed
             blockchain_from_dump.block_chain.append(block)
     return blockchain_from_dump
+
+
+def consensus():
+    """
+    Simple consensus algorithm from RUOCHI.
+    If a longer valid chain is found,
+    replace current chain with it.
+    """
+    global blockchain
+
+    longest_chain = None
+    current_len = len(blockchain.chain)
+
+    for node in peers:
+        response = requests.get('{}/chain'.format(node))
+        length = response.json()['length']
+        chain = response.json()['chain']
+        if length > current_len and blockchain.check_chain_validity(chain):
+            # Longer valid chain found!
+            current_len = length
+            longest_chain = chain
+
+    if longest_chain:
+        blockchain = longest_chain
+        return True
+
+    return False

@@ -9,6 +9,7 @@ from hashlib import sha256
 import json
 # timestamp
 import time
+import requests
 
 class Block:
     def __init__(self, index, timestamp, prev_block_hash, transaction_list):
@@ -130,3 +131,27 @@ class BlockChain:
 
         self.unconfirmed_transactions = []
         return new_block.index
+
+    def check_chain_validity(cls, chain):
+        """
+        A helper method to check if the entire blockchain is valid.
+        """
+        result = True
+        previous_hash = "0"
+
+        # Iterate through every block
+        for block in chain:
+            block_hash = block.hash
+            # remove the hash field to recompute the hash again
+            # using `compute_hash` method.
+            delattr(block, "hash")
+
+            if not cls.is_valid_proof(block, block.hash) or \
+                previous_hash != block.previous_hash:
+                result = False
+                break
+
+            block.hash, previous_hash = block_hash, block_hash
+
+        return result
+
