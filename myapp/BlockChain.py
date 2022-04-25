@@ -23,6 +23,7 @@ class Block:
         self.timestamp = timestamp
         self.prev_block_hash = prev_block_hash
         self.transaction_list = transaction_list
+        self.nonce = 0
         # # block data
         # self.data = "|".join(transaction_list) + "|" + prev_block_hash
         # # current block hash
@@ -101,8 +102,8 @@ class BlockChain:
 
         if not self.is_valid_proof(block, proof):
             return False
-
-        block.hash = proof
+        # dynamic attribute
+        block.block_hash = proof
         self.block_chain.append(block)
         return True
 
