@@ -147,7 +147,7 @@ class BlockChain:
             delattr(block, "hash")
 
             if not cls.is_valid_proof(block, block.hash) or \
-                previous_hash != block.previous_hash:
+                    previous_hash != block.prev_block_hash:
                 result = False
                 break
 
