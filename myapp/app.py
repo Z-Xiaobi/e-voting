@@ -3,10 +3,9 @@
 # @FileName: app.py
 # @Github: https://github.com/Z-Xiaobi
 
-from flask import Flask, request
+from flask import Flask, request, render_template, redirect
 from blockchain import Block, BlockChain, time, json, requests
-# import time
-# import requests
+
 
 # Initialize Application
 app = Flask(__name__)
@@ -17,6 +16,13 @@ blockchain = BlockChain()
 # Initialize peers (nodes / the host addresses of
 # other participating members of the network)
 peers = set()
+
+# Node in the blockchain network that our application will communicate with
+# to fetch and add data.
+CONNECTED_NODE_ADDRESS = "http://127.0.0.1:8000"
+
+posts = []
+
 
 # Create new transaction
 @app.route('/new_transaction', methods=['POST'])
@@ -184,3 +190,48 @@ def announce_new_block(block):
         url = "{}add_block".format(peer)
         requests.post(url, data=json.dumps(block.__dict__, sort_keys=True))
 
+
+def fetch_posts():
+    """
+    Fetch the chain from a blockchain node, parse the
+    data, and store it locally.
+    """
+    get_chain_address = "{}/blockchain".format(CONNECTED_NODE_ADDRESS)
+    response = requests.get(get_chain_address)
+    if response.status_code == 200:
+        content = []
+        chain = json.loads(response.content)
+        for block in chain["chain"]:
+            for transaction in block["transactions"]:
+                transaction["index"] = block["index"]
+                transaction["hash"] = block["previous_hash"]
+                content.append(transaction)
+
+        global posts
+        posts = sorted(content,
+                       key=lambda k: k['timestamp'],
+                       reverse=True)
+
+
+@app.route('/submit', methods=['POST'])
+def submit_textarea():
+    """
+    Endpoint to create a new transaction via our application
+    """
+    post_content = request.form["content"]
+    author = request.form["author"]
+
+    post_object = {
+        'author': author,
+        'content': post_content,
+    }
+
+    # Submit a transaction
+    new_tx_address = "{}/new_transaction".format(CONNECTED_NODE_ADDRESS)
+
+    requests.post(new_tx_address,
+                  json=post_object,
+                  headers={'Content-type': 'application/json'})
+
+    # Return to the homepage
+    return redirect('/')
