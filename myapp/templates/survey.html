@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+	<br>
+	<center>
+		<a href="/mine" target="_blank"><button type="button" class="themeBtn3">Mine</button></a>
+		<a href="/"><button type="button" class="themeBtn">Resync</button></a>
+		<a href="/update_chaincode"><button type="button" class="themeBtn4">Update Chaincode</button></a>
+		<a href="/pending_tx" target="_blank><button type="button" class="themeBtn2">Pending Transaction</button></a>
+		<a href="/list_nodes" target="_blank"><button type="button" class="themeBtn4">List Node</button></a>
+	</center>
+	<center><p style="color:red">To create new survey, please click Update Chaincode and Mine before</p></center>
+	<!-- Form Name -->
+	<legend>-> Post New Survey</legend>
+
+	<div class="container">
+		<div class="row">
+
+		<form  class="form-horizontal" action="/submit" id="textform" method="post">
+	        <fieldset>
+
+	        <!-- Text input question id-->
+	        <div class="form-group">
+	          <label class="col-md-12" for="name">Question ID</label>
+	          <div class="col-md-12">
+	          <input name="questionid" type="text" placeholder="2354" class="form-control input-md" required="">
+	          </div>
+	        </div>
+
+	        <!-- Textarea question -->
+	        <div class="form-group">
+	          <label class="col-md-12" for="message">Survey</label>
+	          <div class="col-md-12">
+	            <textarea class="form-control" placeholder="Just write a survey you want to..." name="question"></textarea>
+	          </div>
+	        </div>
+
+	        <!-- Text input answer-->
+	        <div class="form-group">
+	          <label class="col-md-12" for="email">Answer</label>
+	          <div class="col-md-12">
+	          <input name="answer" type="text" placeholder="ans1|ans2|ans3|..." class="form-control input-md" required="">
+	          </div>
+	        </div>
+
+	        <!-- Text input answer-->
+	        <div class="form-group">
+	          <label class="col-md-12" for="email">Opening Time ( minute )</label>
+	          <div class="col-md-12">
+	          <input name="opening_time" type="text" placeholder="3" class="form-control input-md" required="">
+	          </div>
+	        </div>
+
+	        <!-- Button (Double) -->
+	        <div class="form-group">
+	          <label class="col-md-12 control-label" for="submit"></label>
+	          <div class="col-md-12">
+	            <input name="submit" type="submit" value="Submit" class="btn btn-success"></input>
+	          </div>
+	        </div>
+
+	        </fieldset>
+	    </form>
+
+		</div>
+	</div>
+
+	<!-- Form Name -->
+    <legend>-> Open Surveys</legend>
+
+	<link rel="stylesheet" type="text/css" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css">
+	<div class="container">
+	    <div class="row">
+	    	{% for post in posts %}
+	        <div class="col-sm-8">
+	            <div class="panel panel-white post panel-shadow">
+	                <div class="post-heading">
+	                    <div class="pull-left image">
+	                        <img src="http://bootdey.com/img/Content/user_1.jpg" class="img-circle avatar" alt="user profile image">
+	                    </div>
+	                    <div class="pull-left meta">
+	                        <div class="title h5">
+	                            <a href="#"><b>{{post.author}}</b></a>
+	                            made a post with id {{post.questionid}}.
+	                        </div>
+	                        <h6 class="text-muted time">{{readable_time(post.timestamp)}}</h6>
+	                    </div>
+	                    <div class="post_box-options">
+	                    	<a href="/close_survey?id={{post.questionid}}">
+		                    	<button type="button" class="btn btn-danger btn-circle">
+		                    		<i class="glyphicon glyphicon-remove"></i>
+		                    	</button>
+	                    	</a>
+	                    </div>
+	                </div>
+	                <div class="post-description">
+	                    <p>{{post.question}}</p>
+	                    {% for answer, votes in post.answers.items() %}
+		                    {% if post.status == 'opening' %}
+		                    <div class="stats">
+		                        <a href="/vote?id={{post.questionid}}&answer={{answer}}" class="btn btn-default stat-item">
+		                            {{answer}} | <i class="fa fa-thumbs-up icon"></i>{{len(votes)}}
+		                        </a>
+
+		                        {{votes}}
+		                    </div>
+		                    {% else %}
+		                    	{% if len(votes) == maxvote(post) %}
+			                    <div class="stats">
+			                        <a href="/vote?id={{post.questionid}}&answer={{answer}}" class="btn btn-primary stat-item">
+			                            {{answer}} | <i class="fa fa-thumbs-up icon"></i>{{len(votes)}}
+			                        </a>
+
+			                        {{votes}}
+			                    </div>
+			                    {% else %}
+			                    <div class="stats">
+			                        <a href="/vote?id={{post.questionid}}&answer={{answer}}" class="btn btn-default stat-item">
+			                            {{answer}} | <i class="fa fa-thumbs-up icon"></i>{{len(votes)}}
+			                        </a>
+
+			                        {{votes}}
+			                    </div>
+			                    {% endif %}
+	                    	{% endif %}
+	                    {% endfor %}
+	                </div>
+	            </div>
+	        </div>
+	        {% endfor %}
+	    </div>
+	</div>

@@ -1,11 +1,11 @@
 # -*- coding='utf-8' -*-
 # @Author  : Xiaobi Zhang
 # @FileName: app.py
-# @Github: https://github.com/Z-Xiaobi
+
 
 from flask import Flask, request, render_template, redirect
 from blockchain import Block, BlockChain, time, json, requests
-
+import datetime
 
 # Initialize Application
 app = Flask(__name__)
@@ -23,6 +23,15 @@ CONNECTED_NODE_ADDRESS = "http://127.0.0.1:8000"
 
 posts = []
 
+# root page
+@app.route('/')
+def index():
+    fetch_posts()
+    return render_template('index.html',
+                           title='My Blockchain based P2P Voting System',
+                           posts=posts,
+                           node_address=CONNECTED_NODE_ADDRESS,
+                           timestamp=format_timestamp)
 
 # Create new transaction
 @app.route('/new_transaction', methods=['POST'])
@@ -235,3 +244,7 @@ def submit_textarea():
 
     # Return to the homepage
     return redirect('/')
+
+
+def format_timestamp(timestamp):
+    return datetime.datetime.fromtimestamp(timestamp).strftime("%m/%d/%Y, %H:%M:%S")
