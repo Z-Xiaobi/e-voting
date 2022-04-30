@@ -19,7 +19,7 @@ peers = set()
 
 # Node in the blockchain network that our application will communicate with
 # to fetch and add data.
-CONNECTED_NODE_ADDRESS = "http://127.0.0.1:8000"
+CONNECTED_NODE_ADDRESS = "http://127.0.0.1:5000"
 
 posts = []
 
@@ -27,7 +27,7 @@ posts = []
 @app.route('/')
 def index():
     fetch_posts()
-    return render_template('index.html',
+    return render_template('survey.html',
                            title='My Blockchain based P2P Voting System',
                            posts=posts,
                            node_address=CONNECTED_NODE_ADDRESS,
@@ -54,9 +54,11 @@ def get_blockchain():
     # append all the Block class instances
     for block in blockchain.block_chain:
         chain.append(block.__dict__)
+        print("chain in get_blockchain:")
+        print(chain)
     # return json format data
     return json.dumps({"length": len(chain),
-                       "chain": chain})
+                       "block_chain": chain})
 
 # Mine the unconfirmed transactions or to say
 # Add the pending(i.e. unconfirmed) transactions
@@ -182,7 +184,7 @@ def add_block():
     block = Block(block_data["index"],
                   block_data["timestamp"],
                   block_data["previous_hash"],
-                  block_data["transactions"])
+                  block_data["transaction_list"])
     proof = block_data['hash']
     added = blockchain.add_block(block, proof)
 
@@ -210,8 +212,9 @@ def fetch_posts():
     if response.status_code == 200:
         content = []
         chain = json.loads(response.content)
-        for block in chain["chain"]:
-            for transaction in block["transactions"]:
+        print(chain)
+        for block in chain["block_chain"]:
+            for transaction in block["transaction_list"]:
                 transaction["index"] = block["index"]
                 transaction["hash"] = block["previous_hash"]
                 content.append(transaction)
@@ -248,3 +251,8 @@ def submit_textarea():
 
 def format_timestamp(timestamp):
     return datetime.datetime.fromtimestamp(timestamp).strftime("%m/%d/%Y, %H:%M:%S")
+
+
+# start app
+if __name__ == '__main__':
+    app.run()

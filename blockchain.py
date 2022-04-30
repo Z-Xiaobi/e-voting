@@ -44,15 +44,18 @@ class BlockChain:
 
     def __init__(self):
         self.block_chain = []
-        self.create_initial_block()
         self.unconfirmed_transactions = []
+        self.create_initial_block()
 
     def create_initial_block(self):
         """
         Generate and appends initial block to the block chain.
         Initialize this block with index 0, previous_hash 0, and a valid hash.
         """
-        initial_block = Block(0, [], time.time(), "0")
+        initial_block = Block(index=0,
+                              timestamp=time.time(),
+                              prev_block_hash="0",
+                              transaction_list=[])
         initial_block.block_hash = initial_block.generate_hash()
         self.block_chain.append(initial_block)
 
