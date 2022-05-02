@@ -4,23 +4,26 @@
 
 
 from flask import Flask, request, render_template, redirect
-from blockchain import Block, BlockChain, time, json, requests
+from myapp.server.blockchain import Block, BlockChain, time, json, requests
 import datetime
+
+from argparse import ArgumentParser
 
 # Initialize Application
 app = Flask(__name__)
 
 # Initialize Blockchain
 blockchain = BlockChain()
+blockchain.create_initial_block()
 
 # Initialize peers (nodes / the host addresses of
 # other participating members of the network)
 peers = set()
 
-# Node in the blockchain network that our application will communicate with
+# Node in the blockchain network that application will communicate with
 # to fetch and add data.
 CONNECTED_NODE_ADDRESS = "http://127.0.0.1:5000"
-
+# CONNECTED_NODE_ADDRESS = "http://0.0.0.0:5000"
 posts = []
 
 # root page
@@ -199,7 +202,8 @@ def add_block():
 def announce_new_block(block):
     for peer in peers:
         url = "{}add_block".format(peer)
-        requests.post(url, data=json.dumps(block.__dict__, sort_keys=True))
+        headers = {'Content-Type': "application/json"}
+        requests.post(url, data=json.dumps(block.__dict__, sort_keys=True), headers=headers)
 
 
 def fetch_posts():
@@ -226,22 +230,24 @@ def fetch_posts():
 
 
 @app.route('/submit', methods=['POST'])
-def submit_textarea():
+def submit_transaction_form():
     """
     Endpoint to create a new transaction via our application
     """
-    post_content = request.form["content"]
-    author = request.form["author"]
+
 
     post_object = {
-        'author': author,
-        'content': post_content,
+        'survey-title': request.form["survey-title"],
+        'survey-content': request.form["survey-content"],
+        'options': request.form["options"],
     }
+    print("post:")
+    print(post_object)
 
     # Submit a transaction
-    new_tx_address = "{}/new_transaction".format(CONNECTED_NODE_ADDRESS)
+    new_transaction_address = "{}/new_transaction".format(CONNECTED_NODE_ADDRESS)
 
-    requests.post(new_tx_address,
+    requests.post(new_transaction_address,
                   json=post_object,
                   headers={'Content-type': 'application/json'})
 
@@ -255,4 +261,12 @@ def format_timestamp(timestamp):
 
 # start app
 if __name__ == '__main__':
-    app.run()
+
+    # if have arguments in command line, update
+    parser = ArgumentParser()
+    parser.add_argument('--host', default='127.0.0.1', type=str, help='host that app listen on')
+    parser.add_argument('-p', '--port', default=8000, type=int, help='port that app listen on')
+    args = parser.parse_args()
+
+    CONNECTED_NODE_ADDRESS = 'http://{host}:{port}'.format(host=args.host, port=args.port)
+    app.run(port=args.port, host=args.host, debug=True)
