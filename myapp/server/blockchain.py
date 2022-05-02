@@ -60,7 +60,7 @@ class BlockChain:
         self.block_chain.append(initial_block)
 
     @property
-    def get_last_block(self):
+    def last_block(self):
         """
         Retrieve the most recent block in the block chain.
         Note that The block chain will always have at least one block.
@@ -99,7 +99,7 @@ class BlockChain:
         :param proof: hash
         :return:
         """
-        prev_block_hash = self.get_last_block.hash
+        prev_block_hash = self.last_block.block_hash
 
         if prev_block_hash != block.prev_block_hash:
             return False
@@ -124,9 +124,9 @@ class BlockChain:
         if not self.unconfirmed_transactions:
             return False
 
-        new_block = Block(index=self.get_last_block.index + 1,
+        new_block = Block(index=self.last_block.index + 1,
                           timestamp=time.time(),
-                          prev_block_hash=self.get_last_block.hash,
+                          prev_block_hash=self.last_block.block_hash,
                           transaction_list=self.unconfirmed_transactions,)
 
         proof = self.proof_of_work(new_block)
@@ -144,17 +144,17 @@ class BlockChain:
 
         # Iterate through every block
         for block in chain:
-            block_hash = block.hash
+            block_hash = block.block_hash
             # remove the hash field to recompute the hash again
             # using `compute_hash` method.
             delattr(block, "hash")
 
-            if not cls.is_valid_proof(block, block.hash) or \
+            if not cls.is_valid_proof(block, block.block_hash) or \
                     previous_hash != block.prev_block_hash:
                 result = False
                 break
 
-            block.hash, previous_hash = block_hash, block_hash
+            block.block_hash, previous_hash = block_hash, block_hash
 
         return result
 

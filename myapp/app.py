@@ -39,7 +39,7 @@ def index():
 # Create new transaction
 @app.route('/new_transaction', methods=['POST'])
 def new_transaction():
-    required_fields = ["author", "content"]
+    required_fields = ["title", "description", "options"]
     data = request.get_json()
     for field in required_fields:
         if not data.get(field):
@@ -57,8 +57,8 @@ def get_blockchain():
     # append all the Block class instances
     for block in blockchain.block_chain:
         chain.append(block.__dict__)
-        print("chain in get_blockchain:")
-        print(chain)
+        # print("chain in get_blockchain:")
+        # print(chain)
     # return json format data
     return json.dumps({"length": len(chain),
                        "block_chain": chain})
@@ -163,7 +163,7 @@ def consensus():
     global blockchain
 
     longest_chain = None
-    current_len = len(blockchain.chain)
+    current_len = len(blockchain.block_chain)
 
     for node in peers:
         response = requests.get('{}/blockchain'.format(node))
@@ -216,11 +216,11 @@ def fetch_posts():
     if response.status_code == 200:
         content = []
         chain = json.loads(response.content)
-        print(chain)
+        # print(chain)
         for block in chain["block_chain"]:
             for transaction in block["transaction_list"]:
                 transaction["index"] = block["index"]
-                transaction["hash"] = block["previous_hash"]
+                transaction["hash"] = block["prev_block_hash"]
                 content.append(transaction)
 
         global posts
@@ -234,11 +234,10 @@ def submit_transaction_form():
     """
     Endpoint to create a new transaction via our application
     """
-
-
+    print("submit_transaction_form() is called.")
     post_object = {
-        'survey-title': request.form["survey-title"],
-        'survey-content': request.form["survey-content"],
+        'title': request.form["title"],
+        'description': request.form["description"],
         'options': request.form["options"],
     }
     print("post:")

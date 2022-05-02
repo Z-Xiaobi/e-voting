@@ -24,18 +24,18 @@
 
 		<!-- Survey Title-->
 		<div class="form-group row input-group-lg">
-			<label for="survey-title" class="col-sm-2 col-form-label" class="form-label">Survey Title</label>
+			<label for="title" class="col-sm-2 col-form-label" class="form-label">Survey Title</label>
 			<div class="col-sm-10">
-				<input type="text" class="form-control" name="survey-title" id="survey-title" placeholder="Input your survey title here.">
+				<input type="text" class="form-control" name="title" id="title" placeholder="Input your survey title here.">
 			</div>
 
 		</div>
 
 		<!-- Survey Content -->
 		<div class="form-group row input-group-lg">
-		  <label class="col-md-12" for="survey-content" class="form-label">Survey Content</label>
+		  <label class="col-md-12" for="description" class="form-label">Survey Content</label>
 		  <div class="col-md-12">
-			  <textarea class="form-control" name="survey-content" id="survey-content" placeholder="Write a survey you want to publish"></textarea>
+			  <textarea class="form-control" name="description" id="description" placeholder="Write a survey you want to publish"></textarea>
 			  <small name="help-block" class="form-text text-muted">Input your detailed survey content here.</small>
 		  </div>
 		</div>
@@ -59,68 +59,12 @@
 	<div class="row">
 		{% for post in posts %}
 		<div class="col-sm-8">
-			<div class="post-survey-time">{{post.survey-title}}</div>
-			<div class="post-time"> Posted at <i>{{readable_time(post.timestamp)}}</i></div>
-			<div class="post-survey-content">{{post.survey-content}}</div>
-			<div class="post-survey-options">
-				{{post.options}}
-			</div>
+			<p>{{post}}</p>
+			<div> {{post.index}}</div>
+			<div> {{post.options}}</div>
+			<div>{{post.title}}</div>
+			<div>{{post.description}}</div>
 
-
-
-<!--			<div class="panel panel-white post panel-shadow">-->
-<!--				<div class="post-heading">-->
-<!--					<div class="pull-left image">-->
-<!--						<img src="http://bootdey.com/img/Content/user_1.jpg" class="img-circle avatar" alt="user profile image">-->
-<!--					</div>-->
-<!--					<div class="pull-left meta">-->
-<!--						<div class="title h5">-->
-<!--							<a href="#"><b>{{post.author}}</b></a>-->
-<!--							made a post with id {{post.questionid}}.-->
-<!--						</div>-->
-<!--						<h6 class="text-muted time">{{readable_time(post.timestamp)}}</h6>-->
-<!--					</div>-->
-<!--					<div class="post_box-options">-->
-<!--						<a href="/close_survey?id={{post.questionid}}">-->
-<!--							<button type="button" class="btn btn-danger btn-circle">-->
-<!--								<i class="glyphicon glyphicon-remove"></i>-->
-<!--							</button>-->
-<!--						</a>-->
-<!--					</div>-->
-<!--				</div>-->
-<!--				<div class="post-description">-->
-<!--					<p>{{post.question}}</p>-->
-<!--					{% for answer, votes in post.answers.items() %}-->
-<!--						{% if post.status == 'opening' %}-->
-<!--						<div class="stats">-->
-<!--							<a href="/vote?id={{post.questionid}}&answer={{answer}}" class="btn btn-default stat-item">-->
-<!--								{{answer}} | <i class="fa fa-thumbs-up icon"></i>{{len(votes)}}-->
-<!--							</a>-->
-
-<!--							{{votes}}-->
-<!--						</div>-->
-<!--						{% else %}-->
-<!--							{% if len(votes) == maxvote(post) %}-->
-<!--							<div class="stats">-->
-<!--								<a href="/vote?id={{post.questionid}}&answer={{answer}}" class="btn btn-primary stat-item">-->
-<!--									{{answer}} | <i class="fa fa-thumbs-up icon"></i>{{len(votes)}}-->
-<!--								</a>-->
-
-<!--								{{votes}}-->
-<!--							</div>-->
-<!--							{% else %}-->
-<!--							<div class="stats">-->
-<!--								<a href="/vote?id={{post.questionid}}&answer={{answer}}" class="btn btn-default stat-item">-->
-<!--									{{answer}} | <i class="fa fa-thumbs-up icon"></i>{{len(votes)}}-->
-<!--								</a>-->
-
-<!--								{{votes}}-->
-<!--							</div>-->
-<!--							{% endif %}-->
-<!--						{% endif %}-->
-<!--					{% endfor %}-->
-<!--				</div>-->
-<!--			</div>-->
 		</div>
 		{% endfor %}
 	</div>
