@@ -3,7 +3,7 @@
 # @FileName: app.py
 
 
-from flask import Flask, request, render_template, redirect
+from flask import Flask, request, render_template, redirect, url_for
 from myapp.server.blockchain import Block, BlockChain, time, json, requests
 import datetime
 
@@ -26,6 +26,7 @@ CONNECTED_NODE_ADDRESS = "http://127.0.0.1:5000"
 # CONNECTED_NODE_ADDRESS = "http://0.0.0.0:5000"
 posts = []
 
+''' Block Chain End nodes '''
 # root page
 @app.route('/')
 def index():
@@ -34,12 +35,13 @@ def index():
                            title='My Blockchain based P2P Voting System',
                            posts=posts,
                            node_address=CONNECTED_NODE_ADDRESS,
-                           timestamp=format_timestamp)
+                           readable_timestamp=format_timestamp)
 
 # Create new transaction
 @app.route('/new_transaction', methods=['POST'])
 def new_transaction():
-    required_fields = ["title", "description", "options"]
+    # required_fields = ["title", "description", "options"]
+    required_fields = ["type", "content"]
     data = request.get_json()
     for field in required_fields:
         if not data.get(field):
@@ -227,7 +229,14 @@ def fetch_posts():
         posts = sorted(content,
                        key=lambda k: k['timestamp'],
                        reverse=True)
+        print("fetch_posts called. posts: " + str(posts))
 
+def format_timestamp(timestamp):
+    return datetime.datetime.fromtimestamp(timestamp).strftime("%m/%d/%Y, %H:%M:%S")
+
+
+
+''' Survey voting operations nodes'''
 
 @app.route('/submit', methods=['POST'])
 def submit_transaction_form():
@@ -236,12 +245,16 @@ def submit_transaction_form():
     """
     print("submit_transaction_form() is called.")
     post_object = {
-        'title': request.form["title"],
-        'description': request.form["description"],
-        'options': request.form["options"],
+        'type': 'survey',
+        'content': {
+            'title': request.form["title"],
+            'description': request.form["description"],
+            'options': request.form["options"],
+            'timestamp': time.time(),
+        },
     }
-    print("post:")
-    print(post_object)
+    # print("post:")
+    # print(post_object)
 
     # Submit a transaction
     new_transaction_address = "{}/new_transaction".format(CONNECTED_NODE_ADDRESS)
@@ -253,10 +266,31 @@ def submit_transaction_form():
     # Return to the homepage
     return redirect('/')
 
+@app.route('/vote', methods=['GET', 'POST'])
+def vote():
+    idx = request.args.get('index')
+    # description = request.args.get('description')
+    # user_option = request.args.get('user_option')
+    user_option = request.form["bcusr-option-select"]
+    post_object = {
+        'type': 'vote',
+        'content': {
+            'corresponding-survey-id': idx,
+            'options': user_option,
+            'timestamp': time.time(),
+        },
+    }
+    print("vote:")
+    print(post_object)
+    # Submit a transaction
+    new_transaction_address = "{}/new_transaction".format(CONNECTED_NODE_ADDRESS)
 
-def format_timestamp(timestamp):
-    return datetime.datetime.fromtimestamp(timestamp).strftime("%m/%d/%Y, %H:%M:%S")
+    requests.post(new_transaction_address,
+                  json=post_object,
+                  headers={'Content-type': 'application/json'})
 
+    # Return to the homepage
+    return redirect('/')
 
 # start app
 if __name__ == '__main__':

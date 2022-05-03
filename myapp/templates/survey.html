@@ -2,15 +2,6 @@
 
 {% block content %}
 	<br>
-<!--	<center>-->
-<!--		<a href="/mine" target="_blank"><button type="button" class="themeBtn3">Mine</button></a>-->
-<!--		<a href="/"><button type="button" class="themeBtn">Resync</button></a>-->
-<!--		<a href="/update_chaincode"><button type="button" class="themeBtn4">Update Chaincode</button></a>-->
-<!--		<a href="/unconfirmed" target="_blank"><button type="button" class="themeBtn2">Pending Transaction</button></a>-->
-<!--		<a href="/list_nodes" target="_blank"><button type="button" class="themeBtn4">List Node</button></a>-->
-<!--	</center>-->
-	<p style="color:red"></p>
-
 
 	<div class="alert alert-danger" role="alert">
 	  To create new survey, please make sure you have clicked Request Mining and Resynchronization
@@ -20,54 +11,111 @@
 
 	<div class="row">
 
-	<form  class="form-horizontal" action="/submit" method="post">
+		<form  class="form-horizontal" action="/submit" method="post">
 
-		<!-- Survey Title-->
-		<div class="form-group row input-group-lg">
-			<label for="title" class="col-sm-2 col-form-label" class="form-label">Survey Title</label>
-			<div class="col-sm-10">
-				<input type="text" class="form-control" name="title" id="title" placeholder="Input your survey title here.">
+			<!-- Survey Title-->
+			<div class="form-group row input-group-lg">
+				<label for="title" class="col-sm-2 col-form-label" class="form-label">Survey Title</label>
+				<div class="col-sm-10">
+					<input type="text" class="form-control" name="title" id="title" placeholder="Input your survey title here.">
+				</div>
+
 			</div>
 
-		</div>
-
-		<!-- Survey Content -->
-		<div class="form-group row input-group-lg">
-		  <label class="col-md-12" for="description" class="form-label">Survey Content</label>
-		  <div class="col-md-12">
-			  <textarea class="form-control" name="description" id="description" placeholder="Write a survey you want to publish"></textarea>
-			  <small name="help-block" class="form-text text-muted">Input your detailed survey content here.</small>
-		  </div>
-		</div>
-
-		<!-- Text input answer-->
-		<div class="form-group row input-group-lg">
-			<label class="col-md-12" for="options" class="form-label">Options</label>
-			<div class="col-md-12">
-				<input type="text"  name="options"id="options" class="form-control input-md" required="">
-				<small name="help-block" class="form-text text-muted">
-					Each option should be separated with a '|' (no space). Syntax: option1|option2|option3|...
-				</small>
+			<!-- Survey Content -->
+			<div class="form-group row input-group-lg">
+			  <label class="col-md-12" for="description" class="form-label">Survey Content</label>
+			  <div class="col-md-12">
+				  <textarea class="form-control" name="description" id="description" placeholder="Write a survey you want to publish"></textarea>
+				  <small name="help-block" class="form-text text-muted">Input your detailed survey content here.</small>
+			  </div>
 			</div>
-		</div>
-		<button class="btn btn-primary" type="submit">Submit form</button>
 
-	</form>
+			<!-- Text input answer-->
+			<div class="form-group row input-group-lg">
+				<label class="col-md-12" for="options" class="form-label">Options</label>
+				<div class="col-md-12">
+					<input type="text"  name="options"id="options" class="form-control input-md" required="">
+					<small name="help-block" class="form-text text-muted">
+						Each option should be separated with a '|' (no space). Syntax: option1|option2|option3|...
+					</small>
+				</div>
+			</div>
+			<button class="btn btn-primary" type="submit">Submit form</button>
+
+		</form>
 	</div>
 
-	<legend>Openning Surveys</legend>
-	<div class="row">
-		{% for post in posts %}
-		<div class="col-sm-8">
-			<p>{{post}}</p>
-			<div> {{post.index}}</div>
-			<div> {{post.options}}</div>
-			<div>{{post.title}}</div>
-			<div>{{post.description}}</div>
+	<legend>Opening Surveys</legend>
+	<div class="">
+		<table class="table table-sm table-striped mb-0">
+			<thead>
+				<tr>
+					<th>#</th>
+					<th>Survey Title</th>
+					<th>Created When</th>
+					<th>Actions</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for post in posts %}
+				<tr>
+					<th scope="row">{{ post.index }}</th>
+					<td>{{ post.content.title }}</td>
+					<td>{{ readable_timestamp(post.timestamp) }}</td>
+					<td>
+						<button
+								class="btn btn-primary btn-sm"
+								data-bs-toggle='collapse'
+								data-bs-target="#collapseBoard"
+								aria-expanded="false"
+								aria-controls="collapseBoard">
+							Join this voting
+						</button>
+					</td>
+				</tr>
+				<tr>
+					<td colspan=4 >
+						<div class="collapse" id="collapseBoard">
+							<div class="card card-body">
+								<h3>Survey Description</h3>
+								<p>{{ post.content.description }}</p>
+								{% set options=post.content.options.split('|') %}
+								<h3>Select your option:</h3>
+<!--								<form  action="/vote" method="post">-->
+								<form  action="{{ url_for('vote') }}" method="post">
+									<select
+											class="form-select"
+											id="select-option"
+											name="bcusr-option-select"
+											aria-label="survey options select">
+										{% for option in options %}
+										<option value="{{ option }}">{{ option }}</option>
+										{% endfor %}
+									</select>
+									<button class="btn btn-primary" type="submit">Submit Your Option</button>
+								</form>
 
-		</div>
-		{% endfor %}
+
+						  </div>
+						</div>
+					</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
 	</div>
-</div>
+
+<!--	<div class="row">-->
+<!--		{% for post in posts %}-->
+<!--		<div class="col-sm-8">-->
+<!--			<div> {{post.index}}</div>-->
+<!--			<div> {{post.options}}</div>-->
+<!--			<div>{{post.title}}</div>-->
+<!--			<div>{{post.description}}</div>-->
+
+<!--		</div>-->
+<!--		{% endfor %}-->
+<!--	</div>-->
 
 {% endblock %}
