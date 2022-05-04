@@ -14,7 +14,6 @@ app = Flask(__name__)
 
 # Initialize Blockchain
 blockchain = BlockChain()
-blockchain.create_initial_block()
 
 # Initialize peers (nodes / the host addresses of
 # other participating members of the network)
@@ -23,10 +22,10 @@ peers = set()
 # Node in the blockchain network that application will communicate with
 # to fetch and add data.
 CONNECTED_NODE_ADDRESS = "http://127.0.0.1:5000"
-# CONNECTED_NODE_ADDRESS = "http://0.0.0.0:5000"
+
 posts = []
 
-''' Block Chain End nodes '''
+''' Block Chain on one node '''
 # root page
 @app.route('/')
 def index():
@@ -40,7 +39,6 @@ def index():
 # Create new transaction
 @app.route('/new_transaction', methods=['POST'])
 def new_transaction():
-    # required_fields = ["title", "description", "options"]
     required_fields = ["type", "content"]
     data = request.get_json()
     for field in required_fields:
@@ -158,7 +156,7 @@ def create_chain_from_dump(chain_dump):
 
 def consensus():
     """
-    Simple consensus algorithm from RUOCHI.
+    Simple consensus algorithm.
     If a longer valid chain is found,
     replace current chain with it.
     """
@@ -250,7 +248,7 @@ def submit_transaction_form():
             'title': request.form["title"],
             'description': request.form["description"],
             'options': request.form["options"],
-            'timestamp': time.time(),
+            # 'timestamp': time.time(),
         },
     }
     # print("post:")
@@ -277,7 +275,7 @@ def vote():
         'content': {
             'corresponding-survey-id': idx,
             'options': user_option,
-            'timestamp': time.time(),
+            # 'timestamp': time.time(),
         },
     }
     print("vote:")
