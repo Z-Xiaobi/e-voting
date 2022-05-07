@@ -1,6 +1,7 @@
 blockchainenv/
 # Exclude all files with starting character ".":
 .*
+__pycache__/
 
 # Not exclude .gitignore
 !.gitignore
