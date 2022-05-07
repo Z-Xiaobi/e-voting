@@ -2,11 +2,11 @@
 # @Author  : Xiaobi Zhang
 # @FileName: app.py
 
-
+from myapp.server.blockchain import Block, BlockChain, time, json
+from myapp.server.p2p import PeerNode
 from flask import Flask, request, render_template, redirect, url_for
-from myapp.server.blockchain import Block, BlockChain, time, json, requests
 import datetime
-
+import requests
 from argparse import ArgumentParser
 
 # Initialize Application
@@ -15,14 +15,13 @@ app = Flask(__name__)
 # Initialize Blockchain
 blockchain = BlockChain()
 
+# Node in the blockchain network that application will communicate with
+# to fetch and add data.
+CONNECTED_NODE_ADDRESS = "http://127.0.0.1:8000"
+
 # Initialize peers (nodes / the host addresses of
 # other participating members of the network)
 peers = set()
-
-# Node in the blockchain network that application will communicate with
-# to fetch and add data.
-CONNECTED_NODE_ADDRESS = "http://127.0.0.1:5000"
-
 posts = []
 
 ''' Block Chain on one node '''
@@ -53,15 +52,15 @@ def new_transaction():
 # Get the whole blockchain
 @app.route('/blockchain', methods=['GET'])
 def get_blockchain():
+    print("get_blockchain() called.")
     chain = []
     # append all the Block class instances
     for block in blockchain.block_chain:
         chain.append(block.__dict__)
-        # print("chain in get_blockchain:")
-        # print(chain)
     # return json format data
     return json.dumps({"length": len(chain),
-                       "block_chain": chain})
+                       "block_chain": chain,
+                       "peers": list(peers)})
 
 # Mine the unconfirmed transactions or to say
 # Add the pending(i.e. unconfirmed) transactions
@@ -111,12 +110,14 @@ def register_new_peers():
 # and sync the blockchain  with the remote node.
 @app.route('/register_with_node', methods=['POST'])
 def register_with_existing_node():
-    node_address = request.get_json()["node_address"]
+    # node_address = request.get_json()["node_address"]
+    node_address = request.form["node_address"]
     if not node_address:
         return "Invalid data", 400
 
-    data = {"node_address": request.host_url}
+    data = {"node_address": str(node_address)}
     headers = {'Content-Type': "application/json"}
+
 
     # Make a request to register with remote node and obtain information
     response = requests.post(node_address + "/register_peer",
@@ -126,24 +127,28 @@ def register_with_existing_node():
         global blockchain
         global peers
         # update chain and the peers
-        chain_dump = response.json()['chain']
-        blockchain = create_chain_from_dump(chain_dump)
+        chain_dump = response.json()['block_chain']
+        blockchain = create_chain_from_dump(chain_dump) #
         peers.update(response.json()['peers'])
         return "Registration successful", 200
     else:
         # if something goes wrong, pass it on to the API response
         return response.content, response.status_code
 
+# return all the registered peers
+@app.route('/peers', methods=['GET'])
+def get_peers():
+    return str(list(peers))
 
 def create_chain_from_dump(chain_dump):
     blockchain_from_dump = BlockChain()
     for idx, block_data in enumerate(chain_dump):
         block = Block(block_data["index"],
                       block_data["timestamp"],
-                      block_data["previous_hash"],
-                      block_data["transactions"])
+                      block_data["prev_block_hash"],
+                      block_data["transaction_list"])
 
-        proof = block_data['hash']
+        proof = block_data['block_hash']
         if idx > 0:
             added = blockchain_from_dump.add_block(block, proof)
             if not added:
@@ -153,6 +158,30 @@ def create_chain_from_dump(chain_dump):
             blockchain_from_dump.block_chain.append(block)
     return blockchain_from_dump
 
+# verify and add block
+@app.route('/add_block', methods=['POST'])
+def add_block():
+    block_data = request.get_json()
+    block = Block(block_data["index"],
+                  block_data["timestamp"],
+                  block_data["prev_block_hash"],
+                  block_data["transaction_list"])
+    proof = block_data['block_hash']
+    added = blockchain.add_block(block, proof)
+
+    if not added:
+        return "The block was discarded by the node", 400
+
+    return "Block added to the chain", 201
+
+# Once a block has been mined, announce it to the network
+# Other blocks can simply verify the proof of work and add it to their
+#     respective chains.
+def announce_new_block(block):
+    for peer in peers:
+        url = "{}/add_block".format(peer)
+        headers = {'Content-Type': "application/json"}
+        requests.post(url, data=json.dumps(block.__dict__, sort_keys=True), headers=headers)
 
 def consensus():
     """
@@ -168,7 +197,7 @@ def consensus():
     for node in peers:
         response = requests.get('{}/blockchain'.format(node))
         length = response.json()['length']
-        chain = response.json()['blockchain']
+        chain = response.json()['block_chain']
         if length > current_len and blockchain.check_chain_validity(chain):
             # Longer valid chain found!
             current_len = length
@@ -180,32 +209,6 @@ def consensus():
 
     return False
 
-# verify and add block
-@app.route('/add_block', methods=['POST'])
-def add_block():
-    block_data = request.get_json()
-    block = Block(block_data["index"],
-                  block_data["timestamp"],
-                  block_data["previous_hash"],
-                  block_data["transaction_list"])
-    proof = block_data['hash']
-    added = blockchain.add_block(block, proof)
-
-    if not added:
-        return "The block was discarded by the node", 400
-
-    return "Block added to the chain", 201
-
-# Once a block has been mined, announce it to the network
-# Other blocks can simply verify the proof of work and add it to their
-#     respective chains.
-def announce_new_block(block):
-    for peer in peers:
-        url = "{}add_block".format(peer)
-        headers = {'Content-Type': "application/json"}
-        requests.post(url, data=json.dumps(block.__dict__, sort_keys=True), headers=headers)
-
-
 def fetch_posts():
     """
     Fetch the chain from a blockchain node, parse the
@@ -216,7 +219,7 @@ def fetch_posts():
     if response.status_code == 200:
         content = []
         chain = json.loads(response.content)
-        # print(chain)
+
         for block in chain["block_chain"]:
             for transaction in block["transaction_list"]:
                 transaction["index"] = block["index"]
@@ -227,7 +230,6 @@ def fetch_posts():
         posts = sorted(content,
                        key=lambda k: k['timestamp'],
                        reverse=True)
-        print("fetch_posts called. posts: " + str(posts))
 
 def format_timestamp(timestamp):
     return datetime.datetime.fromtimestamp(timestamp).strftime("%m/%d/%Y, %H:%M:%S")
@@ -242,13 +244,19 @@ def submit_transaction_form():
     Endpoint to create a new transaction via our application
     """
     print("submit_transaction_form() is called.")
+    options_list = request.form["options"].split('|')
+    options_object = {}
+    # for opt in options_list:
+    #     options_object[opt] =
+
     post_object = {
         'type': 'survey',
         'content': {
             'title': request.form["title"],
             'description': request.form["description"],
             'options': request.form["options"],
-            # 'timestamp': time.time(),
+            # 'option-counts': [0 for i in range(len(options_list))]
+            'timestamp': time.time(),
         },
     }
     # print("post:")
@@ -274,8 +282,8 @@ def vote():
         'type': 'vote',
         'content': {
             'corresponding-survey-id': idx,
-            'options': user_option,
-            # 'timestamp': time.time(),
+            'user_option': user_option,
+            'timestamp': time.time(),
         },
     }
     print("vote:")
@@ -298,6 +306,5 @@ if __name__ == '__main__':
     parser.add_argument('--host', default='127.0.0.1', type=str, help='host that app listen on')
     parser.add_argument('-p', '--port', default=8000, type=int, help='port that app listen on')
     args = parser.parse_args()
-
     CONNECTED_NODE_ADDRESS = 'http://{host}:{port}'.format(host=args.host, port=args.port)
     app.run(port=args.port, host=args.host, debug=True)

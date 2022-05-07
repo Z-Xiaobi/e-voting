@@ -8,7 +8,6 @@
     <script src="https://unpkg.com/bootstrap-table@1.20.0/dist/bootstrap-table.min.js"></script>
     <link rel="stylesheet" href="../static/base.css">
     <link rel="stylesheet" href="../static/survey.css">
-    <script src="../static/survey.js"></script>
     <title>{{ title }}</title>
   </head>
   <body>
@@ -30,16 +29,18 @@
           <li class="nav-item">
             <a class="nav-link" href="/unconfirmed">Pending Transaction</a>
           </li>
-
+          <li class="nav-item">
+            <a class="nav-link" href="/peers">Peers</a>
+          </li>
         </ul>
-
       </div>
       <div class="btn-group right-corner">
-          <a href="{{node_address}}/mine" target="_blank" class="btn btn-outline-warning">
-            Request mining
-          </a>
-          <a href="/" class="btn btn-outline-dark">Resynchronization</a>
-        </div>
+        <a href="{{node_address}}/mine" target="_blank" class="btn btn-outline-warning">
+          Request mining
+        </a>
+        <a href="/" class="btn btn-outline-dark">Resynchronization</a>
+      </div>
+
     </nav>
 
     {% with messages = get_flashed_messages() %}
@@ -53,7 +54,17 @@
     {% endwith %}
 
     <div class="container">
-
+      <br>
+      <legend>Register with a Node</legend>
+      <form class="d-flex input-group input-group-sm mb-3" action="/register_with_node" method="post">
+        <input class="form-control me-2"
+               type="text"
+               name="node_address"
+               placeholder="Input node address (with port) you want to register with"
+               aria-label="register-node">
+        <button class="btn btn-outline-success" type="submit">Register</button>
+      </form>
+      <br>
       {% block content %}{% endblock %}
     </div>
 

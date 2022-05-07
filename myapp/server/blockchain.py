@@ -9,7 +9,7 @@ from hashlib import sha256
 import json
 # timestamp
 import time
-import requests
+
 
 class Block:
     def __init__(self, index, timestamp, prev_block_hash, transaction_list):
