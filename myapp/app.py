@@ -12,15 +12,14 @@ from argparse import ArgumentParser
 # Initialize Application
 app = Flask(__name__)
 
-# Initialize Blockchain
-blockchain = BlockChain()
-
 # Node in the blockchain network that application will communicate with
 # to fetch and add data.
 CONNECTED_NODE_ADDRESS = "http://127.0.0.1:8000"
 
-# Initialize peers (nodes / the host addresses of
-# other participating members of the network)
+# Initialize current node (identity, corresponding blockchain, peers etc)
+curr_node = PeerNode(host='127.0.0.1', port=8000)
+# need to safe remove following
+blockchain = BlockChain()
 peers = set()
 posts = []
 
@@ -45,17 +44,31 @@ def new_transaction():
             return "Invalid transaction data", 404
     # specify the creation time
     data["timestamp"] = time.time()
-    # append transaction data to unconfirmed transaction list
+    # append transaction data to unconfirmed transaction list of current node
     blockchain.add_new_transaction(data)
+    # curr_node.add_new_transaction(data)
     return "Successfully created new transaction", 201
 
-# Get the whole blockchain
+
+# Get the whole blockchain (not encrypted, just for demonstration)
 @app.route('/blockchain', methods=['GET'])
 def get_blockchain():
     print("get_blockchain() called.")
     chain = []
     # append all the Block class instances
     for block in blockchain.block_chain:
+        chain.append(block.__dict__)
+    # return json format data
+    return json.dumps({"length": len(chain),
+                       "block_chain": chain,
+                       "peers": list(peers)})
+
+@app.route('/signed_blockchain', methods=['GET'])
+def get_encrypted_blockchain():
+    """blockchain with signed transactions"""
+    chain = []
+    # append all the Block class instances
+    for block in curr_node.shared_ledger.block_chain:
         chain.append(block.__dict__)
     # return json format data
     return json.dumps({"length": len(chain),
@@ -78,10 +91,13 @@ def mine():
         if len_chain == len(blockchain.block_chain):
             # announce the recently mined block to the network
             announce_new_block(blockchain.last_block)
+        # Broadcast this new block to peers
+
+
         return "Block #{} is mined.".format(blockchain.last_block.index)
     # return "Block #{} is mined.".format(idx)
 
-# Get the unconfirmed transactions
+# Get the unconfirmed transactions (not encrypted, just for demonstration)
 @app.route('/unconfirmed', methods=['GET'])
 def get_unconfirmed_transcations():
     return json.dumps(blockchain.unconfirmed_transactions)
@@ -255,7 +271,6 @@ def submit_transaction_form():
             'title': request.form["title"],
             'description': request.form["description"],
             'options': request.form["options"],
-            # 'option-counts': [0 for i in range(len(options_list))]
             'timestamp': time.time(),
         },
     }
@@ -306,5 +321,10 @@ if __name__ == '__main__':
     parser.add_argument('--host', default='127.0.0.1', type=str, help='host that app listen on')
     parser.add_argument('-p', '--port', default=8000, type=int, help='port that app listen on')
     args = parser.parse_args()
+
+    # update value of global variables
     CONNECTED_NODE_ADDRESS = 'http://{host}:{port}'.format(host=args.host, port=args.port)
+    curr_node = PeerNode(host=args.host, port=args.port)
+
+    # run the app
     app.run(port=args.port, host=args.host, debug=True)

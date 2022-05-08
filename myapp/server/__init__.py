@@ -3,4 +3,4 @@
 # @Author  : Xiaobi Zhang
 # @FileName: __init__.py
 from .blockchain import Block, BlockChain
-from .p2p import Peer
+from .p2p import PeerNode

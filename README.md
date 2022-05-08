@@ -13,3 +13,7 @@
    
 3. CISC 464/664 Introduction to Network Security Lecture 20: Bitcoin & Blockchain from the course lecturer Xing Gao
 xgao@udel.edu
+ 
+4. pycrypto API
+   
+    https://www.dlitz.net/software/pycrypto/api/2.6/
