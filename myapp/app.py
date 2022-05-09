@@ -8,6 +8,7 @@ from flask import Flask, request, render_template, redirect, url_for
 import datetime
 import requests
 from argparse import ArgumentParser
+import socket
 
 # Initialize Application
 app = Flask(__name__)
@@ -17,7 +18,7 @@ app = Flask(__name__)
 CONNECTED_NODE_ADDRESS = "http://127.0.0.1:8000"
 
 # Initialize current node (identity, corresponding blockchain, peers etc)
-curr_node = PeerNode(host='127.0.0.1', port=8000)
+# curr_node = PeerNode(host='127.0.0.1', port=8000)
 # need to safe remove following
 blockchain = BlockChain()
 peers = set()
@@ -249,8 +250,6 @@ def fetch_posts():
 
 def format_timestamp(timestamp):
     return datetime.datetime.fromtimestamp(timestamp).strftime("%m/%d/%Y, %H:%M:%S")
-
-
 
 ''' Survey voting operations nodes'''
 
