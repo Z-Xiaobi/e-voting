@@ -1,26 +1,124 @@
 # -*- coding='utf-8' -*-
-# @Time    : 4/30/22 16:47
 # @Author  : Xiaobi Zhang
 # @FileName: p2p.py
-
-
+import socket
 # import os
 import sys
 import json
-# import time
-# import node
-import socket
 import threading
-import Crypto
 import Crypto.Random
 from Crypto.PublicKey import RSA
-from Crypto.Signature import PKCS1_v1_5
+# from Crypto.Signature import PKCS1_v1_5 # outdated package
+from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA512
 import binascii
 
 # from message import Message
 from myapp.server.blockchain import BlockChain
 
+
+''' Some functions for peer communications '''
+
+
+def connected_ip(remote):
+    if remote != '127.0.0.1':
+        return remote
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('0.0.255.255', 1))
+        address = s.getsockname()[0]
+    except socket.error:
+        address = '127.0.0.1'
+    finally:
+        s.close()
+    return address
+
+
+class PeerNode:
+    def __init__(self, host: str, port: int):
+        self._host_ = host
+        self._port_ = port
+        self._address_head = "http://"
+        # private key and public key
+        random = Crypto.Random.new().read
+        self._private_key = RSA.generate(1024, random)
+        self._public_key = self._private_key.publickey()
+        self._signer = pkcs1_15.new(self._private_key)
+        # peer nodes' info (in json) of current node
+        self._peers_ = set()
+        self._posts = [] # executed shared_transactions
+        # shared_ledger / blockchain
+        self.shared_ledger = BlockChain()
+
+
+    @property
+    def identity(self):
+        """hex representation with binary encoding (DER) of the public key"""
+        return binascii.hexlify(self._public_key.exportKey(format='DER')).decode('ascii')
+
+    # sender
+    def sign_transaction(self, transaction):
+        """sign given transaction"""
+        private_key = self._private_key
+        signer = pkcs1_15.new(private_key)
+        h = SHA512.new(str(transaction).encode('utf8')) # hash
+        return binascii.hexlify(signer.sign(h)).decode('ascii')
+
+    # receiver
+    def verify_transaction(self, transaction, sender):
+        """
+        validate a signed transaction, confirmed it belongs to sender
+        :param transaction: transaction data
+        :param sender: identity of sender
+        :return: if given transaction is valid or not
+        """
+        # get the public key from sender's identity
+        sender_public_key = RSA.importKey(binascii.unhexlify(sender.encode('ascii')))
+
+        # decode the encoded signature
+        sign = self.sign_transaction(transaction)
+        signed_h = binascii.unhexlify(sign.encode('ascii'))
+
+        # verify via hash of transaction message and signature
+        verifier = pkcs1_15.new(sender_public_key)
+        h = SHA512.new(str(transaction).encode('utf8'))
+        if verifier.verify(msg_hash=h, signature=signed_h):
+            return True
+        return False
+
+    @property
+    def node_address(self):
+        return "{0}{1}:{2}".format(self._address_head, self._host_, self._port_)
+
+    ## Getters
+    def get_host(self):
+        host = self._host_
+        return host
+
+    def get_port(self):
+        port = self._port_
+        return port
+
+    def get_addr_head(self):
+        addr = self._address_head
+        return addr
+
+    def get_peers(self):
+        peers = list(self._peers_)
+        return peers
+
+    def execute_transactions(self):
+        """post the transactions on local app"""
+        # upcoming new added block's transactions date
+        global_transactions = self.shared_ledger.last_block.transactions
+        for unconfirmed_transaction in self.shared_ledger.unconfirmed_transactions:
+            # check if this transaction is mined (in the upcoming new added block)
+            if unconfirmed_transaction in global_transactions:
+                self._posts.append(unconfirmed_transaction)
+                self.shared_ledger.unconfirmed_transactions.remove(unconfirmed_transaction)
+        return self._posts
+
+'''
 
 class PeerConnection(threading.Thread):
     def __init__(self, host: str, port: int, peer_node, c_socket: socket):
@@ -35,6 +133,11 @@ class PeerConnection(threading.Thread):
         self._port_ = port
         self.peer_node = peer_node
         self.c_socket = c_socket
+        self._stop_flag_ = threading.Event()
+
+    def get_stop_flag(self):
+        sf = self._stop_flag_
+        return sf
 
 # peer-to-peer node, each node is also a miner in my project
 class PeerNode(threading.Thread):
@@ -46,7 +149,7 @@ class PeerNode(threading.Thread):
         self._server_sock = None
         self._client_sock = None
         self.timeout = timeout
-        self._stop_flag_ = threading.Event()
+
         # private key and public key
         random = Crypto.Random.new().read
         self._private_key = RSA.generate(1024, random)
@@ -139,9 +242,7 @@ class PeerNode(threading.Thread):
         peers = list(self._peers_)
         return peers
 
-    def get_stop_flag(self):
-        sf = self._stop_flag_
-        return sf
+
 
     ## connections
     def start_listening(self):
@@ -211,10 +312,12 @@ class PeerNode(threading.Thread):
             print(f"connect_with_node: Could not connect with node. ({error})")
             return False
 
+'''
 
-
+'''
 # test code
 if __name__ == '__main__':
     node = PeerNode(host='127.0.0.1', port=8000)
     print("identity: " + str(node.identity))
     print(node.verify_transaction({'type': 'survey'}, node.identity))
+'''

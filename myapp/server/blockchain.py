@@ -1,8 +1,6 @@
 # -*- coding='utf-8' -*-
-# @Time    : 4/23/22 16:06
 # @Author  : Xiaobi Zhang
 # @FileName: BlockChain.py
-# @Github: https://github.com/Z-Xiaobi
 
 # hashing
 from hashlib import sha256
