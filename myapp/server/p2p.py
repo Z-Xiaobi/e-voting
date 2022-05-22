@@ -44,9 +44,9 @@ class PeerNode:
         self._private_key = RSA.generate(1024, random)
         self._public_key = self._private_key.publickey()
         self._signer = pkcs1_15.new(self._private_key)
-        # peer nodes' info (in json) of current node
-        self._peers_ = set()
-        self._posts = [] # executed shared_transactions
+        # peer nodes' address
+        self._peers = set()
+        self._posts = [] # local mempool for executed shared_transactions
         # shared_ledger / blockchain
         self.shared_ledger = BlockChain()
 
@@ -90,6 +90,17 @@ class PeerNode:
     def node_address(self):
         return "{0}{1}:{2}".format(self._address_head, self._host_, self._port_)
 
+    def execute_transactions(self, received_block):
+        """post the transactions on local app"""
+        # upcoming new added block's transactions date
+        global_transactions = received_block.transactions
+        for unconfirmed_transaction in self.shared_ledger.unconfirmed_transactions:
+            # check if this transaction is mined (in the upcoming new added block)
+            if unconfirmed_transaction in global_transactions:
+                self._posts.append(unconfirmed_transaction)
+                self.shared_ledger.unconfirmed_transactions.remove(unconfirmed_transaction)
+        return self._posts
+
     ## Getters
     def get_host(self):
         host = self._host_
@@ -103,20 +114,38 @@ class PeerNode:
         addr = self._address_head
         return addr
 
+    def get_posts(self):
+        posts = self._posts
+        return posts
+
+    def update_posts(self, posts):
+        self._posts = posts
+        if self._posts == posts:
+            return True
+        else:
+            return False
+
     def get_peers(self):
-        peers = list(self._peers_)
+        peers = self._peers
         return peers
 
-    def execute_transactions(self):
-        """post the transactions on local app"""
-        # upcoming new added block's transactions date
-        global_transactions = self.shared_ledger.last_block.transactions
-        for unconfirmed_transaction in self.shared_ledger.unconfirmed_transactions:
-            # check if this transaction is mined (in the upcoming new added block)
-            if unconfirmed_transaction in global_transactions:
-                self._posts.append(unconfirmed_transaction)
-                self.shared_ledger.unconfirmed_transactions.remove(unconfirmed_transaction)
-        return self._posts
+    def update_peers(self, peer_data):
+        return self._peers.update(peer_data)
+
+    def update_all_peers(self, peer_list):
+        self._peers = peer_list
+        if self._peers == peer_list:
+            return True
+        else:
+            return False
+
+    def add_peer(self, peer_addr):
+        return self._peers.add(peer_addr)
+
+    def remove_peer(self, peer_addr):
+        return self._peers.remove(peer_addr)
+
+
 
 '''
 

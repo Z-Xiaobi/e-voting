@@ -12,6 +12,10 @@ Run a node with port 8000:
 
 `flask run --port 8000`
 
+if a port (eg: port 8000) is in use, so you can't start project, use:
+`lsof -i tcp:8000`
+
+
 # Reference
 
 1. satwikkansal's tutorial 
