@@ -2,10 +2,10 @@
 # @Author  : Xiaobi Zhang
 # @FileName: app.py
 
-from myapp.server.blockchain import Block, BlockChain, time, json
-from myapp.server.p2p import connected_ip, PeerNode
-# from server.blockchain import Block, BlockChain, time, json
-# from server.p2p import connected_ip, PeerNode
+# from myapp.server.blockchain import Block, BlockChain, time, json
+# from myapp.server.p2p import connected_ip, PeerNode
+from server.blockchain import Block, BlockChain, time, json
+from server.p2p import connected_ip, PeerNode
 from flask import Flask, request, render_template, redirect, url_for, session, g
 import datetime
 import requests
@@ -86,6 +86,8 @@ def index():
     return render_template('survey.html',
                            title='My Blockchain based P2P Voting System',
                            # posts=posts,
+                           port=p_node.get_port(),
+                           host=p_node.get_host(),
                            posts=p_node.get_posts(),
                            node_address=CONNECTED_NODE_ADDRESS,
                            readable_timestamp=format_timestamp)
@@ -250,7 +252,11 @@ def get_blockchain():
 def mine():
     # before mine the block, broadcast transaction to peers
     # broadcast_new_transaction(blockchain.unconfirmed_transactions)
-    broadcast_new_transaction(p_node.shared_ledger.unconfirmed_transactions)
+    # broadcast_new_transaction(p_node.shared_ledger.unconfirmed_transactions)
+    bc_transaction_address = "{}/broadcast_transaction".format(CONNECTED_NODE_ADDRESS)
+    requests.post(bc_transaction_address,
+                  json=json.dumps(p_node.shared_ledger.unconfirmed_transactions),
+                  headers={'Content-type': 'application/json'})
 
     # produce certificate for potential block
     # new block's index
@@ -265,7 +271,10 @@ def mine():
         consensus()
         if len_chain == len(p_node.shared_ledger.block_chain):
             # broadcast the recently mined block to the network
-            broadcast_new_block(p_node.shared_ledger.last_block)
+            bc_block_address = "{}/broadcast_block".format(CONNECTED_NODE_ADDRESS)
+            requests.post(bc_block_address,
+                          json=json.dumps(p_node.shared_ledger.last_block.__dict__, sort_keys=True),
+                          headers={'Content-type': 'application/json'})
         return "Block #{} is mined.".format(p_node.shared_ledger.last_block.index)
 
 # Add a new peer/node to the network
@@ -358,7 +367,7 @@ def consensus():
             chain = response.json()['block_chain']
             # if length > current_len and blockchain.check_chain_validity(chain):
             if length > current_len and \
-                    p_node.shared_ledger.block_chain.check_chain_validity(chain):
+                    p_node.shared_ledger.check_chain_validity(chain):
                 # Longer valid chain found!
                 current_len = length
                 longest_chain = chain
@@ -369,7 +378,12 @@ def consensus():
     # update chain as the longest chain in network
     if longest_chain:
         # blockchain = longest_chain
-        broadcast_blockchain(longest_chain)
+        # broadcast_blockchain(longest_chain)
+        bc_chain_address = "{}/broadcast_blockchain".format(CONNECTED_NODE_ADDRESS)
+        requests.post(bc_chain_address,
+                      json=json.dumps(p_node.shared_ledger),
+                      headers={'Content-type': 'application/json'})
+
         return True
 
     return False
@@ -415,6 +429,13 @@ def create_chain_from():
 @app.route('/add_block', methods=['POST'])
 def add_block():
     block_data = request.get_json()
+    # print("add block:")
+    # print(block_data)
+    # print(type(block_data))
+    # {"block_hash": "000ebbd065d80a07b58f2a05a981366c14fac8790de0e8632c1fdd1566630f7e", "index": 1, "nonce": 2618, "prev_block_hash": "eacb12efc03f3daa01b045fb0b6a2717c642e30db1ebe884a4c15e6f43340e20", "timestamp": 1653255246.77669, "transaction_list": [{"content": {"description": "a", "options": "A|B|C|D", "timestamp": 1653255236.820195, "title": "a"}, "timestamp": 1653255236.824378, "type": "survey"}]}
+    print(block_data["index"])
+    print(block_data["transaction_list"])
+    print(block_data["block_hash"])
     block = Block(block_data["index"],
                   block_data["timestamp"],
                   block_data["prev_block_hash"],
@@ -422,23 +443,12 @@ def add_block():
     proof = block_data['block_hash']
     # added = blockchain.add_block(block, proof)
     # execute transactions from received block and store into local chain
-    p_node.execute_transactions(block)
-    added = p_node.shared_ledger.add_block(block, proof)
+    added = p_node.execute_transactions(block)
 
     if not added:
         return "The block was discarded by the node {}".format(CONNECTED_NODE_ADDRESS), 400
 
     return "Block added to the chain", 201
-
-@app.route('/broadcast_block', methods=['POST'])
-def broadcast_new_block(block):
-    """Once a block has been mined, broadcast it to the network
-    Other blocks can simply verify the proof of work and add it
-    to their respective chains."""
-    for peer in p_node.get_peers():
-        url = "{}/add_block".format(peer)
-        headers = {'Content-Type': "application/json"}
-        requests.post(url, data=json.dumps(block.__dict__, sort_keys=True), headers=headers)
 
 @app.route('/broadcast_transaction', methods=['POST'])
 def broadcast_new_transaction():
@@ -451,6 +461,18 @@ def broadcast_new_transaction():
         requests.post(new_transaction_address,
                       json=transaction_data,
                       headers={'Content-type': 'application/json'})
+
+@app.route('/broadcast_block', methods=['POST'])
+def broadcast_new_block():
+    """Once a block has been mined, broadcast it to the network
+    Other blocks can simply verify the proof of work and add it
+    to their respective chains."""
+    block_data = request.get_json()
+    for peer in p_node.get_peers():
+        url = "{}/add_block".format(peer)
+        headers = {'Content-Type': "application/json"}
+        # requests.post(url, data=json.dumps(block.__dict__, sort_keys=True), headers=headers)
+        requests.post(url, json=block_data, headers=headers)
 
 @app.route('/broadcast_blockchain', methods=['POST'])
 def broadcast_blockchain():
@@ -479,7 +501,7 @@ if __name__ == '__main__':
     # update value of global variables
     CONNECTED_NODE_ADDRESS = 'http://{host}:{port}'.format(host=args.host, port=args.port)
     print('Start node {}'.format(CONNECTED_NODE_ADDRESS))
-    # curr_node = PeerNode(host=args.host, port=args.port)
+    p_node = PeerNode(host=args.host, port=args.port)
 
     # run the app
     app.run(port=args.port, host=args.host, debug=True)

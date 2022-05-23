@@ -115,7 +115,7 @@ class BlockChain:
     def mine(self):
         """
         The transactions will be initially stored as a pool of unconfirmed transactions.
-        Mining process: Add the pending transactions to the blockchain
+        Mining process on miner: Add the pending transactions to the blockchain
         by adding them to the block and calculate Proof Of Work.
         """
         # if no unconfirmed transactions

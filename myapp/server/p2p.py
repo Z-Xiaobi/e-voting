@@ -2,19 +2,18 @@
 # @Author  : Xiaobi Zhang
 # @FileName: p2p.py
 import socket
-# import os
-import sys
-import json
-import threading
-import Crypto.Random
-from Crypto.PublicKey import RSA
+import Cryptodome
+import Cryptodome.Random
+from Cryptodome.PublicKey import RSA
 # from Crypto.Signature import PKCS1_v1_5 # outdated package
-from Crypto.Signature import pkcs1_15
-from Crypto.Hash import SHA512
+from Cryptodome.Signature import pkcs1_15
+from Cryptodome.Hash import SHA512
 import binascii
 
 # from message import Message
-from myapp.server.blockchain import BlockChain
+# from myapp.server.blockchain import BlockChain
+from .blockchain import BlockChain, Block
+import time
 
 
 ''' Some functions for peer communications '''
@@ -40,7 +39,7 @@ class PeerNode:
         self._port_ = port
         self._address_head = "http://"
         # private key and public key
-        random = Crypto.Random.new().read
+        random = Cryptodome.Random.new().read
         self._private_key = RSA.generate(1024, random)
         self._public_key = self._private_key.publickey()
         self._signer = pkcs1_15.new(self._private_key)
@@ -90,16 +89,35 @@ class PeerNode:
     def node_address(self):
         return "{0}{1}:{2}".format(self._address_head, self._host_, self._port_)
 
-    def execute_transactions(self, received_block):
+    def execute_transactions(self, received_block: Block):
         """post the transactions on local app"""
         # upcoming new added block's transactions date
-        global_transactions = received_block.transactions
+        global_transactions = received_block.transaction_list
+        # transaction need to be uploaded to local chain
+        local_transactions = []
         for unconfirmed_transaction in self.shared_ledger.unconfirmed_transactions:
-            # check if this transaction is mined (in the upcoming new added block)
+            # check if this transaction is broadcasted from miner (in the upcoming new added block)
             if unconfirmed_transaction in global_transactions:
                 self._posts.append(unconfirmed_transaction)
-                self.shared_ledger.unconfirmed_transactions.remove(unconfirmed_transaction)
-        return self._posts
+                local_transactions.append(unconfirmed_transaction)
+
+        # submit validated transactions to local chain
+        new_block = Block(index=self.shared_ledger.last_block.index + 1,
+                          timestamp=time.time(),
+                          prev_block_hash=self.shared_ledger.last_block.block_hash,
+                          transaction_list=local_transactions, )
+
+        proof = self.shared_ledger.proof_of_work(new_block)
+        added = self.shared_ledger.add_block(new_block, proof)
+
+        if not added:
+            return False
+
+        # remove submitted transactions in unconfirmed list
+        for unconfirmed_transaction in local_transactions:
+            self.shared_ledger.unconfirmed_transactions.remove(unconfirmed_transaction)
+
+        return True
 
     ## Getters
     def get_host(self):

@@ -24,7 +24,7 @@
             <a class="nav-link" href="/">Home</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="/blockchain">Check BlockChain</a>
+            <a class="nav-link" href="/local_blockchain">Check BlockChain</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="/unconfirmed">Pending Transaction</a>
@@ -64,6 +64,9 @@
                aria-label="register-node">
         <button class="btn btn-outline-success" type="submit">Register</button>
       </form>
+      <small name="help-block" class="form-text text-muted">
+        Current host: {{ host }}, port: {{ port }}
+      </small>
       <br>
       {% block content %}{% endblock %}
     </div>
