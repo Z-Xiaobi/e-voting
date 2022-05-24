@@ -88,6 +88,14 @@ def index():
 def format_timestamp(timestamp):
     return datetime.datetime.fromtimestamp(timestamp).strftime("%m/%d/%Y, %H:%M:%S")
 
+def sign_message(post_object):
+    """attach signature and identity to message"""
+    encrypted_post_object = {
+        'post_object': post_object,
+        'signed_post_object': p_node.sign_msg(post_object),  # signed data string
+        'identity': p_node.identity,
+    }
+    return encrypted_post_object
 
 @app.route('/submit', methods=['POST'])
 def submit_transaction_form():
@@ -103,11 +111,11 @@ def submit_transaction_form():
             'timestamp': time.time(),
         },
     }
-
+    encrypted_post_object = sign_message(post_object)
     # Submit a transaction
     new_transaction_address = "{}/new_transaction".format(CONNECTED_NODE_ADDRESS)
     requests.post(new_transaction_address,
-                  json=post_object,
+                  json=encrypted_post_object,
                   headers={'Content-type': 'application/json'})
 
     # Return to the homepage
@@ -127,17 +135,11 @@ def vote():
             'timestamp': time.time(),
         },
     }
-
+    encrypted_post_object = sign_message(post_object)
     # Submit a transaction
     new_transaction_address = "{}/new_transaction".format(CONNECTED_NODE_ADDRESS)
     requests.post(new_transaction_address,
-                  json=post_object,
-                  headers={'Content-type': 'application/json'})
-
-    # broadcast transaction to peers
-    bc_transaction_address = "{}/broadcast_transaction".format(CONNECTED_NODE_ADDRESS)
-    requests.post(bc_transaction_address,
-                  json=post_object,
+                  json=encrypted_post_object,
                   headers={'Content-type': 'application/json'})
 
     # Return to the homepage
@@ -149,9 +151,20 @@ def vote():
 # Create new transaction
 @app.route('/new_transaction', methods=['POST'])
 def new_transaction():
+
+    encrypted_data = request.get_json()
+    print("new transaction type:")
+    print(type(encrypted_data))
+    print(encrypted_data)
+
+    if not p_node.verify_msg(msg=encrypted_data["post_object"],
+                             signature=encrypted_data["signed_post_object"],
+                             sender=encrypted_data["identity"]):
+        return "Invalid message", 401
+
     required_fields = ["type", "content"]
-    data = request.get_json()
-    # data = json.loads(request.get_json())
+    # data = request.get_json()
+    data = encrypted_data["post_object"]
     print("new transaction data: ")
     print(data, type(data))
     print("new transaction session")
@@ -174,6 +187,42 @@ def new_transaction():
         session['valid-transaction-num'] += 1
 
     return "Successfully created new transaction on node {}".format(CONNECTED_NODE_ADDRESS), 201
+
+
+# verify and add block
+@app.route('/add_block', methods=['POST'])
+def add_block():
+    encrypted_data = request.get_json()
+    if type(encrypted_data) == str:
+        encrypted_data = json.loads(encrypted_data)
+    print(encrypted_data)
+    print(type(encrypted_data))
+    if not p_node.verify_msg(msg=encrypted_data["post_object"],
+                             signature=encrypted_data["signed_post_object"],
+                             sender=encrypted_data["identity"]):
+        return "Invalid message", 401
+
+    block_data = encrypted_data["post_object"]
+    if type(block_data) == str:
+        block_data = json.loads(block_data)
+    print(block_data)
+    print(type(block_data))
+    block = Block(block_data["index"],
+                  block_data["timestamp"],
+                  block_data["prev_block_hash"],
+                  block_data["transaction_list"])
+    # proof = block_data['block_hash']
+    # execute transactions from received block and store into local chain
+    print("add block with transaction list:")
+    print(block.transaction_list)
+    added = p_node.execute_transactions(block)
+    print("transaction list after execution:")
+    print(p_node.shared_ledger.last_block.transaction_list)
+
+    if not added:
+        return "The block was discarded by the node {}".format(CONNECTED_NODE_ADDRESS), 400
+
+    return "Block added to the chain", 201
 
 # Get a transaction from another node
 @app.route('/get_transaction_from', methods=['POST'])
@@ -305,6 +354,7 @@ def register_with_existing_node():
             peer_list.append(node_address)
             peer_list.remove(CONNECTED_NODE_ADDRESS)
             p_node.update_peers(peer_list)
+            chain_dump = sign_message(chain_dump)
             # new node download all the verified blocks in network
             peer_response = requests.post(node_address + "/create_chain_from",
                                           data=json.dumps(chain_dump),
@@ -384,7 +434,17 @@ def create_chain_from():
     update the chain from miner node
     (who called register peer with current node)
     """
-    chain_dump = request.get_json()
+    encrypted_data = request.get_json()
+    print(encrypted_data)
+    print(type(encrypted_data))
+    if type(encrypted_data) == str:
+        encrypted_data = json.loads(encrypted_data)
+    if not p_node.verify_msg(msg=encrypted_data["post_object"],
+                             signature=encrypted_data["signed_post_object"],
+                             sender=encrypted_data["identity"]):
+        return "Invalid message", 401
+
+    chain_dump = encrypted_data["post_object"]
     print("create_chain_from")
     print(chain_dump)
     new_block_chain = create_chain_from_dump(chain_dump)
@@ -392,44 +452,18 @@ def create_chain_from():
     p_node.shared_ledger = new_block_chain
     return "Update chain successful", 201
 
-
-
-# verify and add block
-@app.route('/add_block', methods=['POST'])
-def add_block():
-    block_data = request.get_json()
-    # print("add block")
-    # print(block_data)
-    # print(type(block_data))
-    block_data = json.loads(block_data)
-    block = Block(block_data["index"],
-                  block_data["timestamp"],
-                  block_data["prev_block_hash"],
-                  block_data["transaction_list"])
-    proof = block_data['block_hash']
-    # execute transactions from received block and store into local chain
-    print("add block with transaction list:")
-    print(block.transaction_list)
-    added = p_node.execute_transactions(block)
-    print("transaction list after execution:")
-    print(p_node.shared_ledger.last_block.transaction_list)
-
-    if not added:
-        return "The block was discarded by the node {}".format(CONNECTED_NODE_ADDRESS), 400
-
-    return "Block added to the chain", 201
-
 @app.route('/broadcast_transaction', methods=['POST'])
 def broadcast_transaction():
     """
     Broadcast the transaction request (json) to the entire network from current node.
     """
     transaction_data = request.get_json()
+    transaction_data = sign_message(transaction_data)
     for peer in p_node.get_peers():
         new_transaction_address = "{}/new_transaction".format(peer)
         peer_response = requests.post(new_transaction_address,
-                      json=transaction_data,
-                      headers={'Content-type': 'application/json'})
+                                      json=transaction_data,
+                                      headers={'Content-type': 'application/json'})
         if peer_response.status_code != 201:
             return peer_response.content, peer_response.status_code
     return "Broadcasting transactions successful", 201
@@ -441,6 +475,7 @@ def broadcast_block():
     Other blocks can simply verify the proof of work and add it
     to their respective chains."""
     block_data = request.get_json()
+    block_data = sign_message(block_data)
     for peer in p_node.get_peers():
         url = "{}/add_block".format(peer)
         headers = {'Content-Type': "application/json"}
@@ -457,7 +492,7 @@ def broadcast_blockchain():
     """
     response = requests.get('{}/local_blockchain'.format(CONNECTED_NODE_ADDRESS))
     chain_dump = response.json()['block_chain']
-
+    chain_dump = sign_message(chain_dump)
     for peer in p_node.get_peers():
         update_chain_address = "{}/create_chain_from".format(peer)
         requests.post(update_chain_address,

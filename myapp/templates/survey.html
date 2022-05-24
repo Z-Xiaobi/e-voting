@@ -4,7 +4,7 @@
 	<br>
 
 	<div class="alert alert-danger" role="alert">
-	  Please make sure you have clicked Request Mining and Resynchronization before you start your operation.
+	  Please make sure you have clicked Request Mining and Resynchronization if you want to submit your operation.
 	</div>
 	<legend>Post A New Survey</legend>
 
@@ -63,7 +63,7 @@
 				<tr>
 					<th scope="row">{{ post.index }}</th>
 					<td>{{ post.content.title }}</td>
-					<td>{{ readable_timestamp(post.timestamp) }}</td>
+					<td>{{ readable_timestamp(post.content.timestamp) }}</td>
 					<td>
 						<button
 								class="btn btn-primary btn-sm"
