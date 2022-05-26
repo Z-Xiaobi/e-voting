@@ -2,6 +2,8 @@
 
 A simple blockchain-based voting system based on satwikkansal's tutorial *Develop a blockchain application from scratch in Python*
 
+This is a coursework/homework project, will not be edited. But I may improve it by creating a new repo.
+
 # Environment
 
 Python 3.6
@@ -53,3 +55,15 @@ if a port (eg: port 8000) is in use, so you can't start project and totally have
    (2) https://ethereum.org/en/developers/docs/consensus-mechanisms/pow/mining/
 
 5. https://github.com/ngocbh/voting-blockchain
+
+
+Shield: [![CC BY 4.0][cc-by-shield]][cc-by]
+
+This work is licensed under a
+[Creative Commons Attribution 4.0 International License][cc-by].
+
+[![CC BY 4.0][cc-by-image]][cc-by]
+
+[cc-by]: http://creativecommons.org/licenses/by/4.0/
+[cc-by-image]: https://i.creativecommons.org/l/by/4.0/88x31.png
+[cc-by-shield]: https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg
