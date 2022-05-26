@@ -1,3 +1,7 @@
+# Introduction
+
+A simple blockchain-based voting system based on satwikkansal's tutorial *Develop a blockchain application from scratch in Python*
+
 # Environment
 
 Python 3.6
@@ -47,3 +51,5 @@ if a port (eg: port 8000) is in use, so you can't start project and totally have
    (2) https://ethereum.org/en/developers/docs/consensus-mechanisms/pow/
    
    (2) https://ethereum.org/en/developers/docs/consensus-mechanisms/pow/mining/
+
+5. https://github.com/ngocbh/voting-blockchain

@@ -61,8 +61,6 @@ class PeerNode:
         private_key = self._private_key
         signer = pkcs1_15.new(private_key)
         h = SHA512.new(str(msg).encode('utf8')) # message hash
-        print("message hash:")
-        print(h)
         # sign message hash, get
         return binascii.hexlify(signer.sign(h)).decode('ascii')
 

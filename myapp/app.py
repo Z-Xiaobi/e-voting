@@ -22,34 +22,27 @@ app = Flask(__name__)
 p_node = PeerNode(host='127.0.0.1', port=8000)
 CONNECTED_NODE_ADDRESS = p_node.node_address
 
-''' App functions'''
-app.secret_key = "myblockchain"
-@app.before_first_request
-def log_before():
-    app.logger.info("log_before is called")
-    g.request_start_time = time.perf_counter()
-    session['valid-transaction-num'] = 0
-    session['transaction-num'] = 0
-    print("before")
-    print(session.items())
+valid_trans_num = 0
+trans_num = 0
+initial_time = time.time()
 
-@app.after_request
-def log_after(response):
-    app.logger.info("log_after is called")
-    # print("after")
-    # print(session.items())
-    # Return early if we don't have the start time
-    if not hasattr(g, "request_start_time"):
-        return response
-    total_time = time.perf_counter() - g.request_start_time
-    app.logger.info('%s s %s %s %s', total_time, request.method, request.path, dict(request.args))
-    valid_trans_num = session['valid-transaction-num']
-    trans_num = session['transaction-num']
-    app.logger.info('valid %d, all %d', valid_trans_num, trans_num)
-    app.logger.info('throughput %s tps, arrival trans rate %s tps',
-                    str(valid_trans_num / total_time),
-                    str(trans_num / total_time))
-    return response
+arrival = []
+throughput = []
+latency = []
+
+''' App functions'''
+def show_throughput():
+    current_time = time.time()
+    total_time = current_time - initial_time
+    # app.logger.info('valid %d, all %d', valid_trans_num, trans_num)
+    # app.logger.info('throughput %s tps, arrival trans rate %s tps',
+    #                 str(valid_trans_num / total_time),
+    #                 str(trans_num / total_time))
+    global arrival
+    global throughput
+    arrival.append(trans_num / total_time)
+    throughput.append(valid_trans_num / total_time)
+
 
 def fetch_posts():
     """
@@ -152,10 +145,12 @@ def vote():
 @app.route('/new_transaction', methods=['POST'])
 def new_transaction():
 
+    new_trans_start_time = time.time()
+
     encrypted_data = request.get_json()
-    print("new transaction type:")
-    print(type(encrypted_data))
-    print(encrypted_data)
+    # print("new transaction type:")
+    # print(type(encrypted_data))
+    # print(encrypted_data)
 
     if not p_node.verify_msg(msg=encrypted_data["post_object"],
                              signature=encrypted_data["signed_post_object"],
@@ -163,28 +158,41 @@ def new_transaction():
         return "Invalid message", 401
 
     required_fields = ["type", "content"]
-    # data = request.get_json()
     data = encrypted_data["post_object"]
-    print("new transaction data: ")
-    print(data, type(data))
-    print("new transaction session")
-    print(session.items())
-    if session.get('transaction-num'):
-        session['transaction-num'] += 1
+
+    global trans_num
+    trans_num += 1
+
+    # show_throughput()
 
     for field in required_fields:
         if not data.get(field):
             return "Invalid transaction data", 404
 
     # append transaction data to unconfirmed transaction list of current node
-    print("before add to transaction list:")
-    print(p_node.shared_ledger.unconfirmed_transactions)
+    # print("before add to transaction list:")
+    # print(p_node.shared_ledger.unconfirmed_transactions)
     p_node.shared_ledger.add_new_transaction(data)
-    print("after add to transaction list:")
-    print(p_node.shared_ledger.unconfirmed_transactions)
+    # print("after add to transaction list:")
+    # print(p_node.shared_ledger.unconfirmed_transactions)
 
-    if session.get('valid-transaction-num'):
-        session['valid-transaction-num'] += 1
+    global valid_trans_num
+    valid_trans_num += 1
+
+    show_throughput()
+
+    bc_transaction_address = "{}/broadcast_transaction".format(CONNECTED_NODE_ADDRESS)
+    for transaction in p_node.shared_ledger.unconfirmed_transactions:
+        requests.post(bc_transaction_address,
+                      json=transaction,
+                      headers={'Content-type': 'application/json'})
+    curr_latency = time.time()- new_trans_start_time
+    # app.logger.info('latency of transaction %d', curr_latency)
+    global latency
+    latency.append(curr_latency)
+    print(arrival)
+    print(throughput)
+    print(latency)
 
     return "Successfully created new transaction on node {}".format(CONNECTED_NODE_ADDRESS), 201
 
@@ -195,8 +203,8 @@ def add_block():
     encrypted_data = request.get_json()
     if type(encrypted_data) == str:
         encrypted_data = json.loads(encrypted_data)
-    print(encrypted_data)
-    print(type(encrypted_data))
+    # print(encrypted_data)
+    # print(type(encrypted_data))
     if not p_node.verify_msg(msg=encrypted_data["post_object"],
                              signature=encrypted_data["signed_post_object"],
                              sender=encrypted_data["identity"]):
@@ -205,19 +213,19 @@ def add_block():
     block_data = encrypted_data["post_object"]
     if type(block_data) == str:
         block_data = json.loads(block_data)
-    print(block_data)
-    print(type(block_data))
+    # print(block_data)
+    # print(type(block_data))
     block = Block(block_data["index"],
                   block_data["timestamp"],
                   block_data["prev_block_hash"],
                   block_data["transaction_list"])
     # proof = block_data['block_hash']
     # execute transactions from received block and store into local chain
-    print("add block with transaction list:")
-    print(block.transaction_list)
+    # print("add block with transaction list:")
+    # print(block.transaction_list)
     added = p_node.execute_transactions(block)
-    print("transaction list after execution:")
-    print(p_node.shared_ledger.last_block.transaction_list)
+    # print("transaction list after execution:")
+    # print(p_node.shared_ledger.last_block.transaction_list)
 
     if not added:
         return "The block was discarded by the node {}".format(CONNECTED_NODE_ADDRESS), 400
@@ -286,15 +294,6 @@ def get_blockchain():
 # to the blockchain
 @app.route('/mine', methods=['GET'])
 def mine():
-    # before mine the block, broadcast transaction to peers
-    print("before mining")
-    bc_transaction_address = "{}/broadcast_transaction".format(CONNECTED_NODE_ADDRESS)
-    for transaction in p_node.shared_ledger.unconfirmed_transactions:
-        requests.post(bc_transaction_address,
-                      # json=json.dumps(p_node.shared_ledger.unconfirmed_transactions),
-                      json=transaction,
-                      headers={'Content-type': 'application/json'})
-
     # produce certificate for potential block
     # new block's index
     idx = p_node.shared_ledger.mine()
@@ -435,8 +434,8 @@ def create_chain_from():
     (who called register peer with current node)
     """
     encrypted_data = request.get_json()
-    print(encrypted_data)
-    print(type(encrypted_data))
+    # print(encrypted_data)
+    # print(type(encrypted_data))
     if type(encrypted_data) == str:
         encrypted_data = json.loads(encrypted_data)
     if not p_node.verify_msg(msg=encrypted_data["post_object"],
@@ -445,8 +444,8 @@ def create_chain_from():
         return "Invalid message", 401
 
     chain_dump = encrypted_data["post_object"]
-    print("create_chain_from")
-    print(chain_dump)
+    # print("create_chain_from")
+    # print(chain_dump)
     new_block_chain = create_chain_from_dump(chain_dump)
     # update local chain
     p_node.shared_ledger = new_block_chain

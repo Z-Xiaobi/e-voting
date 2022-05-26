@@ -8,7 +8,7 @@ importlib-metadata==4.8.3
 itsdangerous==2.0.1
 Jinja2==3.0.3
 MarkupSafe==2.0.1
-pycrypto==2.6.1
+pycryptodomex==3.14.1
 requests==2.27.1
 typing-extensions==4.1.1
 urllib3==1.26.9
